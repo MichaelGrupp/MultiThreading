@@ -25,6 +25,9 @@ void thread()
 
 int main()
 {
+	//create a boost thread == thread constructor with a function as parameter
 	boost::thread t(thread);
+
+	//join connects main and the t thread, so it shuts down only when t as finished 
 	t.join();
 }
