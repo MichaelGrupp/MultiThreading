@@ -2,32 +2,29 @@
 
 #include <boost/thread.hpp> 
 #include <iostream> 
-#include <vector> 
-#include <cstdlib> 
-#include <ctime> 
-
-#include <boost/thread.hpp> 
-#include <iostream> 
 
 void wait(int seconds)
 {
 	boost::this_thread::sleep(boost::posix_time::seconds(seconds));
 }
 
+boost::mutex mutex;
+
 void thread()
 {
 	for (int i = 0; i < 5; ++i)
 	{
 		wait(1);
-		std::cout << i << std::endl;
+		mutex.lock();
+		std::cout << "Thread " << boost::this_thread::get_id() << ": " << i << std::endl;
+		mutex.unlock();
 	}
 }
 
 int main()
 {
-	//create a boost thread == thread constructor with a function as parameter
-	boost::thread t(thread);
-
-	//join connects main and the t thread, so it shuts down only when t as finished 
-	t.join();
+	boost::thread t1(thread);
+	boost::thread t2(thread);
+	t1.join();
+	t2.join();
 }
