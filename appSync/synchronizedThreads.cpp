@@ -8,24 +8,24 @@ void wait(int seconds)
 	boost::this_thread::sleep(boost::posix_time::seconds(seconds));
 }
 
-//create a mutex
-boost::mutex mutex;
+boost::timed_mutex mutex;
 
 void thread()
 {
 	for (int i = 0; i < 5; ++i)
 	{
 		wait(1);
-		//if a mutex is locked, a section can only be used by a single thread that owns the mutex
-		mutex.lock();
+		boost::unique_lock<boost::timed_mutex> lock(mutex, boost::try_to_lock);
+		if (!lock.owns_lock())
+			lock.timed_lock(boost::get_system_time() + boost::posix_time::seconds(1));
 		std::cout << "Thread " << boost::this_thread::get_id() << ": " << i << std::endl;
-		mutex.unlock();
+		boost::timed_mutex *m = lock.release();
+		m->unlock();
 	}
 }
 
 int main()
 {
-	//calling two same threads doesn't lead to to conflicts because 
 	boost::thread t1(thread);
 	boost::thread t2(thread);
 	t1.join();
