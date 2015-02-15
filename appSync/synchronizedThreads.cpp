@@ -2,32 +2,66 @@
 
 #include <boost/thread.hpp> 
 #include <iostream> 
+#include <vector> 
+#include <cstdlib> 
+#include <ctime> 
 
 void wait(int seconds)
 {
 	boost::this_thread::sleep(boost::posix_time::seconds(seconds));
 }
 
-boost::timed_mutex mutex;
+boost::shared_mutex mutex;
 
-void thread()
+//this is the shared resource
+std::vector<int> random_numbers;
+
+//fill() reads and writes to the shared resource --> use unique_lock
+void fill()
 {
-	for (int i = 0; i < 5; ++i)
+	std::srand(static_cast<unsigned int>(std::time(0)));
+	for (int i = 0; i < 3; ++i)
+	{
+		boost::unique_lock<boost::shared_mutex> lock(mutex);
+		random_numbers.push_back(std::rand());
+		lock.unlock();
+		wait(1);
+	}
+}
+
+//print() reads only from the shared resource --> use shared_lock
+void print()
+{
+	for (int i = 0; i < 3; ++i)
 	{
 		wait(1);
-		boost::unique_lock<boost::timed_mutex> lock(mutex, boost::try_to_lock);
-		if (!lock.owns_lock())
-			lock.timed_lock(boost::get_system_time() + boost::posix_time::seconds(1));
-		std::cout << "Thread " << boost::this_thread::get_id() << ": " << i << std::endl;
-		boost::timed_mutex *m = lock.release();
-		m->unlock();
+		boost::shared_lock<boost::shared_mutex> lock(mutex);
+		std::cout << boost::this_thread::get_id() << "  " << random_numbers.back() << std::endl;
+	}
+}
+
+int sum = 0;
+
+//count() reads only from the shared resource --> use shared_lock
+void count()
+{
+	for (int i = 0; i < 3; ++i)
+	{
+		wait(1);
+		boost::shared_lock<boost::shared_mutex> lock(mutex);
+		sum += random_numbers.back();
 	}
 }
 
 int main()
 {
-	boost::thread t1(thread);
-	boost::thread t2(thread);
+	boost::thread t1(fill);
+	boost::thread t2(print);
+	boost::thread t3(count);
 	t1.join();
 	t2.join();
+	t3.join();
+	std::cout << "Summe: " << sum << std::endl;
+	
+	std::cin.get();
 }
